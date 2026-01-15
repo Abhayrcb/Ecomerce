@@ -1,0 +1,153 @@
+# def register(request):
+#     if request.method == 'POST':
+#         form = RegistrationForm(request.POST)
+#         if form.is_valid():
+#             print("Form is valid")
+#             print(form.cleaned_data)
+#             obj=form.save(commit=False)
+#             obj.set_password(form.cleaned_data['password'])
+#             obj.save()
+            
+#             # registration user is not yet active until he activates his account using email link
+#             make_user_activation_link_content_and_send(request,obj)
+            
+
+#             messages.success(request, 'Registration successful!')
+#             return redirect('login')
+#         else:
+#             messages.error(request, form.errors)
+#             return redirect('register')
+#             # You can add a success message or redirect here
+#     form = RegistrationForm()
+#     return render(request, 'accounts/register.html',{'form':form})
+
+
+
+# step-2 create activation link and send email to user
+# these function is only for craeting  activation link to user email after registration loading the html content
+#  it is created for code  sepration this function is only for creating activation link and loading html content for email
+# dont user this function if you want to send any other email
+# def make_user_activation_link_content_and_send(request,obj):
+    
+#     uid64 = urlsafe_base64_encode(force_bytes(obj.pk))
+#     token = default_token_generator.make_token(obj)
+#     reverse_link = reverse('activate', kwargs={'uid64': uid64, 'token': token})
+#     activation_url = f"{request.scheme}://{request.get_host()}{reverse_link}"   
+#     subject = 'Activate your account'
+#     html_content = render_to_string('accounts/MailContent/activation_email.html', {'activation_url': activation_url})
+#     text_content = strip_tags(html_content)
+#     mail(subject, text_content,  html_content,obj.email)
+
+
+
+
+
+# def login(request):
+#     if request.method == 'POST':
+#         email = request.POST.get('email')
+#         password = request.POST.get('password')
+#         user = authenticate(email=email,password=password)
+#         if user is not None:
+#             assign_user_to_cartitems(request,user)
+#             auth_login(request, user)
+#             messages.success(request, 'Login successful!')
+#             return redirect('home')
+#         else:
+#             messages.error(request, 'Invalid email or password. or may be your account is not activated yet.')
+#             return redirect('login')
+#     return render(request, 'accounts/login.html')
+
+
+
+
+# def forgotpasspage(request):
+#     if request.method == 'POST':
+#         email = request.POST.get('email')
+#         try:
+#             user = Account.objects.get(email=email)
+#             # Here you would typically send a password reset email
+            
+            
+#             # Creating password reset link
+#             uid64 = urlsafe_base64_encode(force_bytes(user.pk))
+#             token = default_token_generator.make_token(user)
+#             reverse_link = reverse('resetpass', kwargs={'uid64': uid64, 'token': token})
+            
+#             # actual link jo reset password page tak le jayega user ko
+#             activation_url = f"{request.scheme}://{request.get_host()}{reverse_link}"   
+#             subject = 'Reset Password'
+#             # ye html page email ke andar hoga jisme password reset link hoga 
+#             # for these page we dont have to create any view and url because ye page sirf email ke andar hi dikhana hai
+#             # activation_url:-ye link hoga jisme uid64 and token hoga and view ka url hai reset password page ka
+#             html_content = render_to_string('accounts/MailContent/EmailForResetPasword.html', {'activation_url': activation_url,'user': user})
+#             text_content = strip_tags(html_content)
+#             mail(subject, text_content,  html_content,user.email)
+            
+            
+            
+#             messages.success(request, 'Password reset link has been sent to your email.')
+#             return redirect('login')
+#         except Account.DoesNotExist:
+#             messages.error(request, 'No account found with that email address.')
+#             return redirect('forgot-password')
+        
+#     return render(request, 'accounts/FogrotPasword.html')
+
+
+
+
+# step-7 cahnge the password using the link sent to email
+# reset password page view
+# ye page tab open hoga jab user apne email me diye gaye link pe click
+def ResetPasswordPage(request, uid64, token):
+    if request.method == 'POST':
+        password = request.POST.get('password')
+        confirm_password = request.POST.get('confirm_password')
+        print(password,confirm_password)
+        if password != confirm_password:
+            messages.error(request, 'Passwords do not match.')
+            return redirect('resetpass', uid64=uid64, token=token)
+        
+        try:
+            user_id = force_str(urlsafe_base64_decode(uid64))
+            user = Account.objects.get(pk=user_id)
+        except (Account.DoesNotExist, ValueError, TypeError, OverflowError):
+            user = None
+        if user is not None and default_token_generator.check_token(user, token):
+            user.set_password(password)
+            user.is_active = True  # Optionally activate the user if not already active
+            user.save()
+            messages.success(request, 'Your password has been reset successfully. You can now log in.')
+            return redirect('login')
+        else:
+            messages.error(request, 'The reset link is invalid or has expired.')
+            return redirect('forgot-password')
+    # This view will handle the password reset process
+    return render(request, 'accounts/reset_password.html')
+
+
+
+# step-3 activate the user account 
+# activation view for activating user account using email link
+def activate(request, uid64, token):
+    user_id = force_str(urlsafe_base64_decode(uid64))
+    print(user_id)
+    try:
+        user = Account.objects.get(pk=user_id)
+        print(user)
+    except Account.DoesNotExist:
+        return redirect('register')
+    new_token = default_token_generator.check_token(user=user, token=token)
+    if new_token:
+        user.is_active = True
+        user.save()
+        messages.success(request, 'Account activated successfully! You can now log in.')
+        return render(request, 'accounts/activate_success.html')
+    else:
+        messages.error(request, 'Activation link is invalid or has expired.')
+        return redirect('register')
+    
+    
+# @login_required(login_url='login')   
+def dashboard(request):
+    return render(request, 'accounts/dashboard/dashboard.html')

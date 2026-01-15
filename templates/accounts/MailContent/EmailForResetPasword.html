@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    {{ user.username }} ,<br><br>
+    You have requested to reset your password. Please click on the link below to reset your password
+    <br><br>
+    <a href="{{ activation_url }}">{{ activation_url }}</a>
+    <br><br>
+</body>
+</html>
